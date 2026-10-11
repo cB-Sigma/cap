@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/cB-Sigma/cap"
+	"github.com/cB-Sigma/cap/capxsd"
 	theirs "github.com/tannerryan/cap"
 )
 
@@ -148,7 +149,7 @@ func TestChainSignaturesAgree(t *testing.T) {
 		return string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: c.Raw}))
 	}
 	k, _ := x509.MarshalPKCS8PrivateKey(leafKey)
-	s, err := cap.NewSigner(cap.SignSettings{Key: string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: k})), Certificate: p(leaf) + p(inter)})
+	s, err := cap.NewSigner(cap.SignSettings{Key: string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: k})), Certificate: p(leaf) + p(inter), ECDSAEncoding: "der"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -173,7 +174,8 @@ func TestChainSignaturesAgree(t *testing.T) {
 
 // The real-world alerts tannerryan/cap keeps in its testing directory
 // (Environment Canada, the NAADS aggregator, the US National Weather
-// Service, OASIS examples) parse here, pass the schema check, and have no
+// Service, OASIS examples) parse here, pass the schema check and the OASIS
+// schema itself (capxsd), and have no
 // profile errors under the profiles they declare (warnings are allowed).
 func TestTheirSampleAlerts(t *testing.T) {
 	out, err := exec.Command("go", "list", "-m", "-f", "{{.Dir}}", "github.com/tannerryan/cap").Output()
@@ -197,6 +199,9 @@ func TestTheirSampleAlerts(t *testing.T) {
 		}
 		if err := cap.ValidateSchema(b); err != nil {
 			t.Errorf("%s: schema: %v", filepath.Base(f), err)
+		}
+		if err := capxsd.Validate(b); err != nil {
+			t.Errorf("%s: OASIS CAP-v1.2.xsd: %v", filepath.Base(f), err)
 		}
 		ps := cap.DetectProfiles(a)
 		if len(ps) > 0 {
@@ -234,6 +239,10 @@ func TestOurSignaturesVerifyThere(t *testing.T) {
 		s, err := cap.NewSigner(cap.SignSettings{
 			Key:         string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: k})),
 			Certificate: string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})),
+			// tannerryan/cap reads only ASN.1 ECDSA values (goxmldsig); the
+			// default, the r||s form of XML Signature, is checked against
+			// xmlsec1 in xmlsec_test.go.
+			ECDSAEncoding: "der",
 		})
 		if err != nil {
 			t.Fatal(err)

@@ -1,5 +1,50 @@
 # Changelog
 
+## v0.3.0 (2026-10-12)
+
+Backwards compatible except for the ECDSA signature value form (see
+Fixed), which has an option to keep the old form.
+
+### Added
+
+- Package `capxsd`: validation against the OASIS CAP-v1.2.xsd schema
+  itself, shipped unmodified, on github.com/cB-Sigma/xsd (`Validate`,
+  `Validator` as a `SchemaValidator`, `Schema`). It agrees with
+  `ValidateSchema` case by case in the tests, and the 33 real alerts of
+  the interop corpus pass it.
+- Package `capnet`, the network roles: `Poller` (conditional GETs, linked
+  documents with `MaxLinked`, RFC 5005 paging with `MaxPages`,
+  de-duplication by sender, identifier and sent, `History` fed, `Run`,
+  `Forget`); `FeedHandler` (an http.Handler serving Atom embedded or
+  linked, RSS 2.0, EDXL-DE 1.0 or 2.0, with ETag, Last-Modified and 304,
+  documents byte for byte, `Publish`, `Remove`, `Prune`); `Receiver` (an
+  http.Handler for pushed alerts: bearer token, signature, schema,
+  validation and profiles, then `Deliver`); `Pusher` (POST with retries
+  and Retry-After); `NAADSStream` and `SplitStream` for the TCP stream of
+  Canada's NAAD System, with heartbeats and reconnection.
+- `WriteEDXLDE2` and `EDXLContent`: EDXL-DE 2.0 envelopes with embedded,
+  base64 or linked alerts, accepted by the OASIS 2.0 schema;
+  `Distribution.Expires` (read from either version too).
+- `CirclePolygonN` and `Alert.GeoJSONWith`: circles with any number of
+  sides.
+- Base validation problems carry their CAP 1.2 clause in `Problem.Rule`
+  ("CAP 1.2 3.2.1" to "3.2.4"); `Problem.String` is unchanged.
+- `SignSettings.ECDSAEncoding`: "raw" (default) or "der".
+- Opt-in live tests (`SIGMA_CAP_LIVE=1`) against the US NWS feed,
+  Environment Canada's datamart, India's SACHET feed and the NAADS
+  stream; Docker interop tests (`SIGMA_CAP_INTEROP=1`) with xmlsec1 and
+  xmlschema.
+
+### Fixed
+
+- ECDSA signatures are now written with the r and s integers side by
+  side, as XML Signature requires, instead of the ASN.1 sequence Go
+  produces; xmlsec1 refused the old form. Both forms verify here. Set
+  `ECDSAEncoding: "der"` for receivers built on goxmldsig (such as
+  tannerryan/cap), which read only the ASN.1 form. RSA is unaffected.
+- `ParseEDXLDE` reads an EDXL-DE 2.0 envelope's combinedConfidentiality,
+  which 2.0 keeps inside the descriptor.
+
 ## v0.2.0 (2026-10-11)
 
 Added, all backwards compatible: existing functions keep their

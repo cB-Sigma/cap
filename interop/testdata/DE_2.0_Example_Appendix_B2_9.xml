@@ -1,0 +1,363 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+     Emergency Data Exchange Language (EDXL) Distribution Element Version 2.0
+     Committee Specification 02
+     19 September 2013
+     Copyright (c) OASIS Open 2013. All Rights Reserved.
+     Source: http://docs.oasis-open.org/emergency/edxl-de/v2.0/cs02/examples/
+-->
+
+<edxlDistribution xlink:type="extended"
+    xsi:schemaLocation="urn:oasis:names:tc:emergency:EDXL:DE:2.0 
+    ../schema/edxl-de-v2.0-wd11.xsd
+    http://www.w3.org/2000/09/xmldsig# 
+    ./example-supporting-schema/xmldsig-core-schema.xsd   
+    http://www.w3.org/2001/04/xmlenc
+    ./example-supporting-schema/xenc-schema.xsd"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns="urn:oasis:names:tc:emergency:EDXL:DE:2.0"
+    xmlns:edxl-gsf="urn:oasis:names:tc:emergency:edxl:gsf:1.0"
+    xmlns:ct="urn:oasis:names:tc:emergency:edxl:ct:1.0" xmlns:gml="http://www.opengis.net/gml/3.2"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+    <distributionID>Sandia001</distributionID>
+    <senderID>dellis@sandia.gov</senderID>
+    <dateTimeSent>2005-08-07T18:05:00-07:00</dateTimeSent>
+    <dateTimeExpires>2005-08-07T19:05:00-07:00</dateTimeExpires>
+    <distributionStatus>Actual</distributionStatus>
+    <distributionKind>Report</distributionKind>
+  <descriptor xlink:type="resource">
+    <!-- In a real messaging system this would probably be FOUO or higher
+        based on the sensitivity of a SNM detection. The current confidentiality
+        is all unclassified in this example for distribution purposes.
+    -->
+    <combinedConfidentiality>Unclassified</combinedConfidentiality>
+  <senderRole>
+    <ct:ValueListURI>urn:sandia:gov:sensors:senderRole</ct:ValueListURI>
+    <ct:Value>SENTRY sensor managment system</ct:Value>
+  </senderRole>
+    <!--
+This demonstrates the provison to allow multiple values under the same
+Value List. <value> is repeated three times, since Warning and reporting
+systems want CAP content, Hazard Prediction systems want detailed sensor
+outputs, and situational awareness systems want the location and type of event.
+    -->
+  
+  <recipientRole>
+    <ct:ValueListURI>urn:sandia:gov:sensors:recipientRole</ct:ValueListURI>
+    <ct:Value>Warning and Reporting Devices</ct:Value>
+    <ct:Value>Hazard Prediction applications</ct:Value>
+    <ct:Value>Situational Awarness applications</ct:Value>
+  </recipientRole>
+  
+    <!--
+This key word can be used by subscribing systems or applications
+to get distribution of one or more of the enclosed <contentObject>
+container elements.
+    -->
+  <keyword>
+    <ct:ValueListURI>urn:sandia:gov:sensors:keywords</ct:ValueListURI>
+    <ct:Value>SNM Detection</ct:Value>
+  </keyword>
+
+    <!--
+The elements explicitAddress used in this example are DMIS COGs and e-mail.
+Routing of EDXL Distribution is just being designed and there are no good
+way to show real scheme in this example.
+-->
+    <explicitAddress>
+        <explicitAddressScheme>DMIS COGs</explicitAddressScheme>
+        <explicitAddressValue>1734</explicitAddressValue>
+        <explicitAddressValue>3520</explicitAddressValue>
+    </explicitAddress>
+    <explicitAddress>
+        <explicitAddressScheme>e-mail</explicitAddressScheme>
+        <explicitAddressValue>dellis@sandia.gov</explicitAddressValue>
+    </explicitAddress>
+   
+    <targetAreas>
+      <areaKind>DistributionTargetArea</areaKind>
+ 
+      <areaGrouping>Union</areaGrouping>
+      <targetArea>
+        <geoPoliticalLocation>
+          <ct:Address>
+            <Country xmlns="urn:oasis:names:tc:emergency:edxl:ciq:1.0:xal">
+              <NameElement>US</NameElement>
+            </Country>
+            <AdministrativeArea xmlns="urn:oasis:names:tc:emergency:edxl:ciq:1.0:xal">
+              <NameElement>California</NameElement>
+            </AdministrativeArea>
+          </ct:Address>
+        </geoPoliticalLocation>
+      </targetArea>
+      <targetArea>
+        <geoPoliticalLocation>
+          <ct:GeoCode>
+            <ct:ValueListURI>http://www.unece.org/fileadmin/DAM/cefact/locode/us.htm</ct:ValueListURI>
+            <ct:Value>US SFO</ct:Value>
+          </ct:GeoCode>
+        </geoPoliticalLocation>
+      </targetArea>
+    </targetAreas>
+</descriptor>
+
+    <!--This is a XLST transformed CAP 1.0 message for legacy systems. The message is used by
+publish/subscription software like NuParadigm Foundation engine in the DoD Alerting Framework.
+Legacy Warning and reporting systems would not be able to process a CAP 1.1
+message and therefore a transform was accomplished.
+
+Most recent information is added to the begining of the Distribution in this example to
+allow rapid determination of most recent key <contentObject> container elements.
+    -->
+    <content xlink:type="resource">
+    <contentObject xlink:type="resource">
+        <!-- <contentKeyword> is added to allow referencing between <contentObject>s -->
+        <contentDescriptor >
+          <contentKeyword>
+            <ct:ValueListURI>urn:sandia:gov:sensor:detection.event.id</ct:ValueListURI>
+            <ct:Value>10.2.2.1:2005-08-07T18:00:00Z</ct:Value>
+          </contentKeyword>
+        <!--
+This could be eliminated since it provides no distribution value but was retained
+to demonstrate the <keyXMLContent> would have to be transformed in CAP 1.1 to CAP 1.0
+Conversions
+-->
+          <confidentiality>Unclassified</confidentiality>
+        </contentDescriptor>
+        <contentXML>
+            <embeddedXMLContent xmlns:cap1.0="http://www.incident.com/cap/1.0">
+                <EncryptedData xmlns="http://www.w3.org/2001/04/xmlenc#"
+                    Type="http://www.w3.org/2001/04/xmlenc#Element">
+                    <EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#tripledes-cbc"/>
+                    <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+                        <KeyName>deskey.bin</KeyName>
+                    </KeyInfo>
+                    <CipherData>
+                        <CipherValue>GSCinwYBtwJxp6kcZPGqE6rybCfsnvI6Lz+IZVPqnRfnI1hWq7cI2WT4BsjBBQCu
+                            TE68pCQ/keOGtvYJ5yNVZEuAnIhOf37OEiqk1rcBARXb03LCYvlXYKA1zmEC5yFT
+                            CUcyCMV146G4eNU1H7F+wbMjbSgHjOYgYe+rpjOVYAK9Gs4Uj+CWhijjxpr5Y/vX
+                            1NEtHFhLsXC9cSfhXWVmi3veXwbDycC+QtcvQL/Rfr45bDwsJnCCutTzfmoqF1CS
+                            BgYUi6osW+XhoRkAttzKbRADVZ6bG5SMkZN0SKiwSaCyKyMKjdpiQwYQhjUXUoAn
+                            veBylXREqfmtOIm/pT7Y45pabWNG9l3aljil8P7qZ5Y26Q0X+i0U+eEGuafHrMVb
+                            S/QBpAkNbP5/f9UR3B4t5t7hLOsvDXdR6CWFBNsrczLjZ7YC2O+g1HBl8YsQdREA
+                            And3PKgoy8QlKv6ZLA+aJzQpSvzbSu3btgN6vyF3GGPqKprVIYRFouaJHYgL81zn
+                            zZovnH4lubwa+YPgD0H48a/FM2LaA8euPzMFDWIki0fm5DoZZzYCmPKmfLJS10RG
+                            lUKzW0svDw8I1AwX6LBssPm+hoBa7HzTnuM40FD+vsmET+p0bqBtaUSnDHrHXLzp
+                            P6TrcNr5R5cxQ4C+shwezFQDNKbioyC6m5PaTH/6qhlTmE32vP8ySnMKvL74QCfP
+                            w8hTZxwq9UVLPq2WKJcI0Phc1e3HoYkBTpVk9OUf/CVaxMXGOiXReeLXGPC1IQnn
+                            a6xw7ImkgeCFcY+rcttq2fE3UqWtc5R6J16/Jv666K9fgCbXRVhaBdMDYpz0GKFa
+                            gMJulUK6zTtah+bidtUrF31UWAX+wqIqmDFJ1ivJaRbLEiEVCrt0jKwOjuR41dDD
+                            VS5j2BuvmZ5TILnOnHFU6H4GudnwjpL01eLrwELSfKmbQmUx2A0L6NBj9SRkXXHW
+                            onZV6uX+c3CR46OekvxYyMi1rxE2zQPykfh/mELRhGgyDVqtdFQwhDx2Klu+Gh2z
+                            3nC51yn37laIO5KSvL5Gkb6jxFVrcUvrcp4pX5czw7/VWbxWoRPY7Bus3akhPu+I
+                            /jchv7SiVRP5mX4Ewh+yeduYX+UZLo07m5zhAMtmFdiLJV9tgHVTJf7ZJ3bGWP+h
+                            Et0Nl98hGV362cSRhkoLJwNmOgIpGXSMO6T5nA1MZhJ6CkCP8QV1zpKrLVJSRZRn
+                            fffBjdl8CzipzjE05JVKbyfbq9I33fkWMbda+Vo9ZMiDinOee6KxnDnxll9ca9Lg
+                            +dl9J0qjJz5VwnWLRCeprsOXt+LlmeHC60NJgRarhidlrfuxmONM+QZTk4ZQGIPD
+                            fsk5ftJtzvHgW5G/wN7fxyLh1AqQucW13IAsmfwuJS0+HntYZVoXqGjRg1sK6snx
+                            zteJJm6a2OyG/M5RvLAEVhOKWyU2+9hjzts8ySg6Qb2+KrUTRQ8JBmVBeSjR2svv
+                            2AWyBYj29JAdAikX9gfGDDvTG9GqJr+jFE9mfOBtg7lsdLezQKvvNMsntm6RdSpu
+                            dA3vL8uBIliGBNJZSOOKr06BXp6PjbL6Ov47EbOfvP8Vm9vKQD7PmjPaIbN1bUr9
+                            V9cHUQ5h6LSecnAy/FZQMLdcamNAIhpiEgoQcwEmaa+1/wTv7LppqxZkFVQQbI2m
+                            nC9Ujcd08g2Qyh+0YCHP50SbCwDe2W+CYBi7QBDdF3qt45zaZnHyRm/yXhVWCJX1
+                            +0WY/+OukquhaWJ8Y0fygA1yk7Jyqqpu2XU9X0Vu8oETQlL/+37mEzy/beL9VNnr
+                            eU7bfQBAnYw1CkeXs5rAcc1vllZEU22Uqg3H5saOQlEHgV1NxL+0C+A9/Q2ZsaFI
+                            BDDIiH+f6+6aUno6fotGUA==</CipherValue>
+                    </CipherData>
+                </EncryptedData>
+            </embeddedXMLContent>
+        </contentXML>
+        <other>
+            <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+                <SignedInfo>
+                    <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                    <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+                    <Reference>
+                        <Transforms>
+                            <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+                            />
+                        </Transforms>
+                        <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+                        <DigestValue>przigAg811cHIqSXpIrFg1BGx20=</DigestValue>
+                    </Reference>
+                </SignedInfo>
+                <SignatureValue>BH8MGSS9QAlgq7a7I7PF5XjKsqaDumTt3cSWxBmwErByvQuaarOgH6MMflVLkG0Y
+                    tv6zaOqR6Kis4giTqtZBo8QCkGukpre2gurdi3Ws0yO3Wt8nWrcH3QAUllhocXpV
+                    gXahZ8MzHc9zuJq9+bl+S72czTjS0UdCvk/MMRV/xhwZ/1QSn+ffh0s3RU6Cn1Q0
+                    aYSuDtX5mAGUWAzJghKgK/qSM5jF4c233g7M4m+Rul3C+QOFBOMGmp+NodnG9b0z
+                    hycJGVdUpY0a+1r0quu2pmdLZnIQVY1stWNFS3wI9RzdslwzoGP9/nRARGS0kLf1
+                    De+WB4Xdar48A9WJwng0iA==</SignatureValue>
+                <KeyInfo>
+                    <KeyName>rsakey.pem</KeyName>
+                </KeyInfo>
+            </Signature>  
+        </other>
+        
+    </contentObject>
+    <!--
+This is the original CAP 1.1 message produced by the SENTRY system.
+There was sufficent data to warrant the alert.
+In reality the CAP messages would not be Public, however, It is used in this
+for simplicity
+-->
+    <contentObject xlink:type="resource">
+        <contentDescriptor> 
+          <contentKeyword>
+            <ct:ValueListURI>urn:sandia:gov:sensor:detection.event.id</ct:ValueListURI>
+            <ct:Value>10.2.2.1:2005-08-07T18:00:00Z</ct:Value>
+          </contentKeyword>      
+          <confidentiality>Unclassified</confidentiality>
+        </contentDescriptor>
+        <contentXML>
+            <embeddedXMLContent xmlns:cap1.1="urn:oasis:names:tc:emergency:cap:1.1">
+                <EncryptedData xmlns="http://www.w3.org/2001/04/xmlenc#"
+                    Type="http://www.w3.org/2001/04/xmlenc#Element">
+                    <EncryptionMethod Algorithm="http://www.w3.org/2001/04/xmlenc#tripledes-cbc"/>
+                    <KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#">
+                        <KeyName>deskey.bin</KeyName>
+                    </KeyInfo>
+                    <CipherData>
+                        <CipherValue>MiKRUfL1Yb3Vw9JcewTAYVnYT3Zh2Tf9d0fhRyGreJW0FWoXr1/27AXFXBTmZC/2
+                            hw9cMMFaGKeXNr1tK0Os1Lozx9uZZYoF5UiNH18KD/WnNbpwk+ttK3TwRcxBfowm
+                            lzzClMn5suHeUM2PFiCll1Wup8cSfwAqptXVF3sZrLAMsQWJmGfyGYYCiaZ+P3NZ
+                            hiVFamDB7D9id5HJ3qHLNcxucGNFA5TfOwe/euP7O1ah9Q7Rp2nxsXF9PaQYziSS
+                            G4I/J+v+FwuJXhbLqU1PcbP4ofCLg+s6tph2kJxFArGSX9u3k7FHvp3tLZnskXCw
+                            iYRGDqrSGrmLt7bTtMmF/IhFQc4x0aE4ldVEN999uQ6KnDyd22KdUJhupRH8UqZz
+                            +sKVJF3+yatOsroCwOCjTe/GqnNRZNtG59dGC5D247LH2AVn/6WU+txFflZhUg0z
+                            A0PElIMicguTRaEaIDGJF/QvqzTE1r3iYgHXIGfgEhQiix35ZURWUTcATrKyNFFE
+                            /CD8+v6YHGbKrgeJDnvJ5AqjZSU1NajOpCtbhWQm1D878OhjCN+T689PZPB2X2nz
+                            f1kupkZ/Fq6Z6aF77j0xp4wB7bpFW5ssWUHySwdg5vYw4hS3Geg5wn3AQViqTGI8
+                            oRaDa3wT9byHq+cq83WqA3aroJOXzD/HQCmKNhmPFqYj503JH3aZcWNrDxHyBQRr
+                            Libv4o9v4LCGviaKT/2y0S25t5KkL/MJA2c6LIngmhHKQFr1sruWgSrjHn9KtagU
+                            KeYqYlgKK6s56X+PHQvusXoxpgDLjXpVVhNpF/mRh+86J4zY3JAIcfIZJQ05DjvX
+                            io2iZY/hstzkTfY5+CPvKH7FmuYqeoU7Nano7+EGSB4w0TnSoDfm9D/RIsAtwdpu
+                            7WonmeguEK37u0bNuXQHi9LZTELD0L2HIkPVdo4BYq26WMe5vZdwVkW6up92AIQE
+                            7KvADQZZUGDVoKA3Njt9O5s6g+a14wcHqxD+FS8veacDsYFrmhs+0WYlyWtDJERL
+                            +y0qtHLmSi/kTdYoKRGx+/lyUl8FIfqOnk2dk3BicbQ3kyEbngV3qHBrYqrVITTB
+                            eMUKxL3wB5OkcCn3u6Nqun14QFmf8O9KEZGXZZqdQs7jz6MV3yjPvzelmLs9nbCm
+                            3eXFGrSlHbbwCLQBconzDWgfoN6W/lTRv3z8RmTg+Z+3CjK2MRt6x5XZTcDqk4JW
+                            wozh2btLz4Yc2xUbclbtVd3muOhBq3eSsGXC6xX4fxW0cuqi6UsOZRA2kiKJHY+V
+                            2KFO9/y3x4arscIsBwfmNVZYt6bCoy/Or0yva49yV/A//8JFN7aGLh530Dt53J4H
+                            bcsQ1n3q7kxir5VLuNj0aZYHjtGu7gzPa1UpPAJ0trqro4qinspnkdRueW7SQYcd
+                            ufF5OG4GMTI+VjX4MnOMOgnYiAaZqrBoH3B5t7bAKeszVPs6S9NPfkzx1nkqminG
+                            /Z/hBpmsFlcUlS+qylXU7umHvssE2juap1NQUaL6IyHQ0tZzsQd0e6mYkDuzNNbH
+                            4l9czPXXXfvcKRJnJ0Yho9j30YfBWyllF67SMewYhcNg35tAbstXe+Ghg+D/TVcd
+                            SZ4r1Cmk49IQE3SNwIO6vGUtMhmCJGq+yJx89lfMLijZRBr18exdQ1hoVeQ+YzyY
+                            rZ/e6PTZHVkbcHGLsd+InyBdz3MTCmaYLGGG6gGtL42nJYmXDUIwWTAFXcWo0jDh
+                            HO28OimZg8QGhiSAAc8uXzwbtjVHIJTC27e6iqldNxnYDoNWDZxVjI3fccbvUwmz
+                            702I+4Kb/n5M1X5RXeMZ12OvlRRnQi7nhZuTeTMEbRizHptWP5yse3LcNjRJ2Jr2</CipherValue>
+                    </CipherData>
+                </EncryptedData>
+            </embeddedXMLContent>
+        </contentXML>
+        <other>
+        <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <SignedInfo>
+                <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+                <Reference>
+                    <Transforms>
+                        <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+                        />
+                    </Transforms>
+                    <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+                    <DigestValue>N7NvgXfahdGZPjb9o0XvwejLI5o=</DigestValue>
+                </Reference>
+            </SignedInfo>
+            <SignatureValue>Tg8zP+/1Cg/3MR9iSareJb7snexQ3DjBxGSL3xH+Kf3Kh5NQq/Uwagw/fmI2wcxcac/2fz893HeTkXGn8mShg+wmdoRwNykp5uHPtAzcFBKlh3v7FemtM9M73XbX7KsYfM0J+RTHUxp4tTMYUPogSEJWiSGSGVbp+MALtUH799fGqqqOREyuljfVIlLvvCogwOd6n7J8S2sHjyRXEw5AVFnxL6k02TgjztbEuoLu+qvEZOIGXmj9yfy4nj41RNXeHMOS1IAcOQgx5vNzju2slFIWzlmvjqq+7aVg5hy0yBiXJuljvigTOxrwHScaYW8oHDpQHwM6EXbgW3uaWnf9Kg==</SignatureValue>
+            <KeyInfo>
+                <KeyName>rsakey.pem</KeyName>
+            </KeyInfo>
+        </Signature>
+        </other>
+    </contentObject>
+    <contentObject xlink:type="resource">
+        <contentDescriptor>
+        <contentDescription>Photo image from Sensor: RADDET-01, Site: Golden Gate Bridge, having a
+        Detection class of SNM</contentDescription>
+          <contentKeyword>
+            <ct:ValueListURI>urn:sandia:gov:sensor:detection.event.id</ct:ValueListURI>
+            <ct:Value>10.2.2.1:2005-08-07T18:00:00Z</ct:Value>
+          </contentKeyword>
+          <confidentiality>Unclassified</confidentiality>
+        </contentDescriptor>
+        <otherContent>
+            <mimeType>image/jpeg</mimeType>
+            <uri>http://sentry/photoCapture/10.2.2.1:2005-08-07T18:00:00Z</uri>
+        </otherContent>
+        <other>
+        <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <SignedInfo>
+                <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+                <Reference>
+                    <Transforms>
+                        <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+                        />
+                    </Transforms>
+                    <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+                    <DigestValue>io7Katgoo77YNfQYdZMB8taoeKg=</DigestValue>
+                </Reference>
+            </SignedInfo>
+            <SignatureValue>AjQXGgp9h5TC2D+bh9w59sbmtUpgE/IeZVdDQM+zi58XT2RPb7OXAAABni78WduA
+                uP6nxL6k+BBo4G+TgaqWvCQIqdlDO+qyMnM0ExPui5eg00jstbwiSeYxSt2VQqS2
+                RD2vR811at0XwIkMpugSftKNJBZgB9mhRqQgP+E0nDJJPNYDz0bLJjp0J/EDxn4H
+                6qx6GpDKgDc//53jVhOb4zZPIERsTLjPxpOOnBK31cs5Rf6vU9MyOOBTHZgpvoza
+                muhejW1CIJfYjd/OoKQ9Hiv4MCX4v/dX7n6ePHZaDxNeCccDIjoVYrAHEWxQ9hE6
+                rqriugNLZ3Lh8sUzhZLTyg==</SignatureValue>
+            <KeyInfo>
+                <KeyName>rsakey.pem</KeyName>
+            </KeyInfo>
+        </Signature>
+        </other>
+    </contentObject>
+    <!-- This is the based 64 encode image of the Suspect vehicle with SNM.
+This data is provide for Law Enforcement senstive systems to redistribute
+on private systems which do not have intenet access.
+-->
+    <contentObject xlink:type="resource">
+        <contentDescriptor>
+        <contentDescription>Photo image from Sensor: RADDET-01, Site: Golden Gate Bridge, having a
+        Detection class of SNM</contentDescription>
+          <contentKeyword>
+            <ct:ValueListURI>urn:sandia:gov:sensor:detection.event.id</ct:ValueListURI>
+            <ct:Value>10.2.2.1:2005-08-07T18:00:00Z</ct:Value>
+          </contentKeyword>
+          <confidentiality>Unclassified</confidentiality>
+        </contentDescriptor>
+        <otherContent>
+            <mimeType>image/jpeg</mimeType>
+            <contentData>
+                /9j//gAoaAkAAAAAAECMWv/mOzNdGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD/2wBDAAgGBgcGBQgH
+                BwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/
+                AYG3nGaeEI5BoACp6gmmgKwOBzQBFICRUZXIwOKAE8sjmms5Uc0AU5JwTioxLjpQBHIc5qpJQBGr
+                YNSgjFACbuacQCtAEIXDVOOlACgUuAaAG4xVbUP+Qdc/9czQB//Z </contentData>
+        </otherContent>
+        <other>
+        <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+            <SignedInfo>
+                <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#"/>
+                <SignatureMethod Algorithm="http://www.w3.org/2000/09/xmldsig#rsa-sha1"/>
+                <Reference>
+                    <Transforms>
+                        <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+                        />
+                    </Transforms>
+                    <DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1"/>
+                    <DigestValue>PkrjafcKUd027EETVu5JwqlubcA=</DigestValue>
+                </Reference>
+            </SignedInfo>
+            <SignatureValue>NvqlkBLs4GpM+t+uoWQ53rmjNT43qdwbMsEoiB0a2BRwqkmynKQDbA2eIHmxfBfo
+                xe+q+15v/2IGQQw+5XmWtMx8QIQkGBElSdlybOKibxBqNuWH+J6yR1mIA6bOmBE+
+                +F2zA9DuvKZVLa8El1pUGke6FeIzoMC7TdDcBtmSAkRMXxe8MjxjxApM3vnMSt9A
+                iCo2EUx4qYf82iJ9FX7vIFFfL2QW38RvZqY+rjXsHV5OK3fkTPFI+ZE5lIrHKjb3
+                gu409JrdNtSy/wLd/WLypiYFNDZXxT6i5wBbdAvBkQ0jHECOJjfN+h1bHkvT4wLX
+                Cpc26QQ6Ic3goSLojC3rjw==</SignatureValue>
+            <KeyInfo>
+                <KeyName>rsakey.pem</KeyName>
+            </KeyInfo>
+        </Signature>
+        </other>
+    </contentObject>
+    </content>
+</edxlDistribution>

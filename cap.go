@@ -299,8 +299,8 @@ type Problem struct {
 	// itself).
 	Profile string `json:"profile,omitempty"`
 	// Rule is the rule's reference in the profile or standard, such as a
-	// clause or rule number, where one is known ("XSD" for the schema
-	// check).
+	// clause or rule number ("CAP 1.2 3.2.2" for the base checks of an info
+	// block, "XSD" for the schema check).
 	Rule string `json:"rule,omitempty"`
 	// Warning marks a recommendation rather than a requirement: Check
 	// lists it, Validate does not fail on it.
@@ -545,10 +545,28 @@ func (a *Alert) check(o Options) []Problem {
 			}
 		}
 	}
+	for i := range ps {
+		ps[i].Rule = clauseOf(ps[i].Field)
+	}
 	if len(ps) > 0 {
 		return ps
 	}
 	return nil
+}
+
+// clauseOf is the CAP 1.2 clause that defines a field's element: 3.2.1 the
+// alert's, 3.2.2 info's, 3.2.3 resource's, 3.2.4 area's (Problem.Rule of
+// base validation problems).
+func clauseOf(field string) string {
+	switch {
+	case strings.Contains(field, "area["):
+		return "CAP 1.2 3.2.4"
+	case strings.Contains(field, "resource["):
+		return "CAP 1.2 3.2.3"
+	case strings.HasPrefix(field, "info["):
+		return "CAP 1.2 3.2.2"
+	}
+	return "CAP 1.2 3.2.1"
 }
 
 // Expires is the latest expiry of the alert's info blocks, or zero when

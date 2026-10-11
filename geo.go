@@ -69,12 +69,21 @@ const circleSegments = 32
 // CirclePolygon approximates a circle as a closed GeoJSON ring (spherical
 // Earth, 6371 km).
 func CirclePolygon(center []float64, radiusKm float64) [][]float64 {
+	return CirclePolygonN(center, radiusKm, circleSegments)
+}
+
+// CirclePolygonN is CirclePolygon with n sides (at least 3; 32 when n is
+// smaller), for maps that need a finer or coarser outline.
+func CirclePolygonN(center []float64, radiusKm float64, n int) [][]float64 {
+	if n < 3 {
+		n = circleSegments
+	}
 	const earth = 6371.0
 	lon0, lat0 := center[0]*math.Pi/180, center[1]*math.Pi/180
 	d := radiusKm / earth
-	ring := make([][]float64, 0, circleSegments+1)
-	for i := 0; i < circleSegments; i++ {
-		b := 2 * math.Pi * float64(i) / circleSegments
+	ring := make([][]float64, 0, n+1)
+	for i := 0; i < n; i++ {
+		b := 2 * math.Pi * float64(i) / float64(n)
 		lat := math.Asin(math.Sin(lat0)*math.Cos(d) + math.Cos(lat0)*math.Sin(d)*math.Cos(b))
 		lon := lon0 + math.Atan2(math.Sin(b)*math.Sin(d)*math.Cos(lat0), math.Cos(d)-math.Sin(lat0)*math.Sin(lat))
 		ring = append(ring, []float64{round6(lon * 180 / math.Pi), round6(lat * 180 / math.Pi)})
@@ -88,7 +97,11 @@ func round6(v float64) float64 { return math.Round(v*1e6) / 1e6 }
 // one Feature per area, with a Polygon, a MultiPolygon, or no geometry when
 // the area is described by geocodes only. Circles become 32-sided polygons
 // and keep their centre and radius in the properties.
-func (a *Alert) GeoJSON() map[string]any {
+func (a *Alert) GeoJSON() map[string]any { return a.GeoJSONWith(circleSegments) }
+
+// GeoJSONWith is GeoJSON with circles drawn as polygons of the given
+// number of sides.
+func (a *Alert) GeoJSONWith(segments int) map[string]any {
 	features := []any{}
 	for _, in := range a.Info {
 		for _, ar := range in.Area {
@@ -101,7 +114,7 @@ func (a *Alert) GeoJSON() map[string]any {
 			}
 			for _, c := range ar.Circle {
 				if center, r, err := ParseCircle(c); err == nil {
-					polys = append(polys, [][][]float64{CirclePolygon(center, r)})
+					polys = append(polys, [][][]float64{CirclePolygonN(center, r, segments)})
 					circles = append(circles, map[string]any{"center": center, "radiusKm": r})
 				}
 			}

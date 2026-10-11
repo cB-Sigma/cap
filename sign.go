@@ -34,6 +34,12 @@ type SignSettings struct {
 	// Certificate is the PEM certificate of the key, followed by any
 	// intermediates; the first goes in each signature's KeyInfo.
 	Certificate string `json:"certificate"`
+	// ECDSAEncoding is how an ECDSA SignatureValue is written: "" or "raw",
+	// the two integers r and s side by side as XML Signature requires
+	// (RFC 6931 2.3.6), which xmlsec1 and Apache Santuario expect; "der",
+	// an ASN.1 sequence, for receivers built on goxmldsig (such as
+	// tannerryan/cap), which read only that. RSA signatures are unaffected.
+	ECDSAEncoding string `json:"ecdsaEncoding,omitempty"`
 }
 
 // VerifySettings configures checking of received signatures.
@@ -91,7 +97,17 @@ func NewSigner(s SignSettings) (*Signer, error) {
 	for i, c := range certs {
 		der[i] = c.Raw
 	}
-	ctx, err := dsig.NewSigningContext(key, der)
+	signer := key
+	switch s.ECDSAEncoding {
+	case "", "raw":
+		if k, ok := key.(*ecdsa.PrivateKey); ok {
+			signer = rawECDSA{k}
+		}
+	case "der":
+	default:
+		return nil, fmt.Errorf("sign.ecdsaEncoding %q is not raw or der", s.ECDSAEncoding)
+	}
+	ctx, err := dsig.NewSigningContext(signer, der)
 	if err != nil {
 		return nil, err
 	}
@@ -268,6 +284,7 @@ func (v *Verifier) VerifyChain(doc []byte) (verified []byte, state string, chain
 		}
 		store = chain[:1]
 	}
+	ecdsaRawToDER(root)
 	vc := dsig.NewDefaultValidationContext(&dsig.MemoryX509CertificateStore{Roots: store})
 	vc.Clock = dsig.NewFakeClockAt(at)
 	el, err := vc.Validate(root)

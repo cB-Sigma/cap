@@ -9,8 +9,10 @@ problem instead of stopping at the first, checks national profiles
 (Canada, the US, India) and the application's own, checks documents
 against the CAP 1.2 schema's content model, signs alerts and verifies
 enveloped XML signatures against pinned certificates or CA chains with
-revocation, converts areas to GeoJSON, and reads and writes the Atom and
-RSS feeds and EDXL-DE envelopes that carry or link alerts. It was written
+revocation, converts areas to GeoJSON, reads and writes the Atom and RSS
+feeds and EDXL-DE 1.0 and 2.0 envelopes that carry or link alerts, and
+plays the network roles: feed poller and server, push receiver and
+sender, and client of Canada's NAADS stream. It was written
 for SigmaM2M, a oneM2M platform, as the protocol half of its CAP feed
 ingest, publishing and public warning integrations.
 
@@ -21,12 +23,13 @@ ingest, publishing and public warning integrations.
 | CAP 1.2 read and write | yes; XML, and JSON with CAP element names (`MarshalJSONCAP`, `ParseJSON`) |
 | CAP 1.1, 1.0, no namespace | read as 1.2; `Alert.Version` records the original |
 | Validation | required elements, enumerations, date-time form (strict or lenient), references, identifier characters, scope conditions, polygon, circle, altitude and ceiling; `Problem.Essential` tells which problems leave an alert unusable; `Check` adds warnings |
-| Schema check | `ValidateSchema`: element order, occurrence, unknown elements, attributes, simple types and signature placement, from the CAP 1.2 schema's content model; a full XSD engine plugs in as a `SchemaValidator` |
+| Schema check | `ValidateSchema`: element order, occurrence, unknown elements, attributes, simple types and signature placement, from the CAP 1.2 schema's content model; package `capxsd` validates against the OASIS CAP-v1.2.xsd file itself (shipped) on a pure-Go XSD engine, alone or as a `SchemaValidator` |
 | Profiles | Canada CAP-CP 0.4 and 1.0 (`CAPCP`), US IPAWS 1.0 (`IPAWS`), India's SACHET conventions (`India`, warnings only, with `RepairIndia`); your own through the `Profile` interface; `DetectProfiles` finds the ones an alert declares |
-| XML signatures | enveloped, exclusive C14N, SHA-256, RSA or ECDSA; verification against pinned certificates or a chain to trusted roots (intermediates from KeyInfo or settings, system roots optional), key usage checks, a revocation hook with CRL and OCSP checks built in |
+| XML signatures | enveloped, exclusive C14N, SHA-256, RSA or ECDSA (r and s side by side as XML Signature requires, or ASN.1 for goxmldsig-based readers); verification against pinned certificates or a chain to trusted roots (intermediates from KeyInfo or settings, system roots optional), key usage checks, a revocation hook with CRL and OCSP checks built in |
 | Message history | `History`: whether an Update or Cancel references every message of its chain still in effect |
-| Feeds and envelopes | Atom (RFC 4287) with embedded or linked alerts, RSS 2.0, EDXL-DE 1.0 and 2.0 (embedded, base64 or linked alerts), a bare alert in; Atom and EDXL-DE 1.0 out |
-| GeoJSON (RFC 7946) | areas as a FeatureCollection; circles as 32-segment polygons |
+| Feeds and envelopes | Atom (RFC 4287) with embedded or linked alerts, RSS 2.0, EDXL-DE 1.0 and 2.0 (embedded, base64 or linked alerts), a bare alert in; Atom and EDXL-DE 1.0 and 2.0 out (`WriteEDXLDE2`); RSS out through `capnet.FeedHandler` |
+| Network roles (`capnet`) | feed poller (conditional GETs, linked documents, RFC 5005 paging, de-duplication, history); feed server and push receiver as `http.Handler`s; push sender with retries; client for the TCP stream of Canada's NAAD System |
+| GeoJSON (RFC 7946) | areas as a FeatureCollection; circles as polygons of 32 sides, or as many as asked (`GeoJSONWith`) |
 
 Limits, stated plainly:
 
@@ -40,12 +43,16 @@ Limits, stated plainly:
   searched on 2026-10-11; India adopted CAP 1.2 itself through ITU-T
   X.1303). `India` checks the conventions seen in 50 alerts of NDMA's
   SACHET feed, as warnings, and says so in every finding's rule.
-- The OASIS schema file (cap-v1.2.xsd) is not shipped. OASIS allows it to
-  be copied unmodified with its notice, but no published pure-Go XSD
-  engine is used here; `ValidateSchema` encodes the schema's content
-  model as facts instead, and an application with an XSD engine can load
-  the OASIS file itself and pass it as a `SchemaValidator`.
-- `WriteEDXLDE` writes EDXL-DE 1.0 only; 2.0 is read, not written.
+- The OASIS EDXL-DE 2.0 schema set cannot yet be loaded by
+  github.com/cB-Sigma/xsd v0.3.0 (GML types that extend a simple-content
+  type with complex content, and the xlink namespace imported from two
+  files), so `WriteEDXLDE2` output is checked against it with xmlschema
+  in the interop tests, not in Go.
+- Enumerations are strings with exported value lists; typed values (as
+  tannerryan/cap has) would change the `Alert` fields, so they wait for
+  the v1 API review.
+- IPAWS-OPEN publishing (SOAP with a FEMA certificate) is not here; it
+  needs a FEMA account.
 - `OCSPCheck` soft-fails by default (an unreachable responder passes);
   `OCSPOptions.Strict` makes every certificate's answer required.
 
@@ -54,13 +61,13 @@ Limits, stated plainly:
 Compared from each library's source at the versions named, in October
 2026. Check the projects themselves before relying on a row.
 
-| | this module (v0.2.0) | tannerryan/cap v1.1.1 | IBM/cap (2019 commit) | alerting/go-cap (2018 commit) |
+| | this module (v0.3.0) | tannerryan/cap v1.1.1 (still the latest on 2026-10-12) | IBM/cap (2019 commit) | alerting/go-cap (2018 commit) |
 |---|---|---|---|---|
 | Maintained | yes | yes (tagged 2026-10-03) | archived | archived |
 | Licence | Apache-2.0 | BSD-2-Clause | Apache-2.0 | MIT |
 | Reads CAP 1.2 | yes, leniently (`Parse`) or refusing non-conforming documents (`ParseStrict`) | yes, strictly (refuses unknown elements at parse) | yes | yes, without namespace checks |
 | Reads CAP 1.1 and 1.0 | yes, as 1.2 | no, refuses other namespaces | 1.1 as a separate type | yes, without namespace checks |
-| Validation | every problem listed, errors and warnings, profile and rule named; strict or lenient date-times; derefUri, digest, size and ceiling warnings; schema content-model check | errors and warnings, each with its clause; derefUri and digest checks | no | no |
+| Validation | every problem listed, errors and warnings, profile and rule named; base problems with their CAP 1.2 clause; strict or lenient date-times; derefUri, digest, size and ceiling warnings; schema content-model check and the OASIS schema file itself (`capxsd`) | errors and warnings, each with its clause; derefUri and digest checks | no | no |
 | Enumerations | strings, with the value lists exported | typed values | strings | strings |
 | Canadian profile (CAP-CP) | 0.4 (what Canadian feeds carry) and 1.0; event list as a warning | 1.0 only | no | no |
 | US IPAWS profile, India | yes; India as SACHET's observed conventions | no | no | no |
@@ -68,7 +75,9 @@ Compared from each library's source at the versions named, in October
 | Verifies XML signatures | yes, pinned certificates or a chain to trusted roots; CRL and OCSP checks, revocation hook | yes, a chain to trusted roots, with a certificate check hook | no | no |
 | Signs alerts | yes (RSA, ECDSA) | no | no | no |
 | Reference chains across messages | `History` | no | no | no |
-| Feeds, envelopes | reads Atom, RSS and EDXL-DE 1.0/2.0, writes Atom and EDXL-DE 1.0 | no | reads the US NWS Atom feed | no |
+| Feeds, envelopes | reads Atom, RSS and EDXL-DE 1.0/2.0, writes Atom, RSS and EDXL-DE 1.0/2.0 | no | reads the US NWS Atom feed | no |
+| Network roles | feed poller, feed server, push receiver and sender, NAADS stream client (`capnet`) | no | no | no |
+| Signature interop | xmlsec1 both ways (RSA, ECDSA in XML Signature's r\|\|s form), tannerryan/cap (with ASN.1 ECDSA) | verifies through goxmldsig, which reads ECDSA values only in ASN.1 form (so not those of xmlsec1 or this module by default) | no | no |
 | JSON | CAP element names, through `MarshalJSONCAP`/`ParseJSON` | typed enums with JSON tags on the types | no | no |
 | Areas as GeoJSON | yes | polygon and circle parsing only | no | polygon and circle types |
 
@@ -153,8 +162,10 @@ API reference: https://pkg.go.dev/github.com/cB-Sigma/cap
 
 | Package | What it does |
 |---|---|
-| `cap` (module root) | `Alert` and its parts, `Parse` (CAP 1.2, 1.1, 1.0, no namespace), `ParseStrict`, `Marshal`, `MarshalJSONCAP`/`ParseJSON`, `Validate` and `Check` with `Options.LenientTime`, `Options.Profiles` and `Problem.Essential`; `Profile`, `NewProfile`, `RegisterProfile`, `ProfileByName`, `DetectProfiles`, `CAPCP`, `CAPCPWithLocations`, `IPAWS`, `India`, `RepairIndia`; `History`; `ValidateSchema` and `SchemaValidator`; references, date-times, `MostSevere`, `Expires`; `ParsePolygon`, `ParseCircle`, `CirclePolygon`, `Alert.GeoJSON`; `ParseFeed`, `ParseEDXLDE`, `WriteAtom` and `WriteEDXLDE`; `Signer`, `Verifier` (`VerifyChain`, `Revoked`, `KeyUsages`), `CRLCheck`, `ParseCRLs`, `OCSPCheck` |
-| `interop` (nested module, tests only) | cross-checks against github.com/tannerryan/cap |
+| `cap` (module root) | `Alert` and its parts, `Parse` (CAP 1.2, 1.1, 1.0, no namespace), `ParseStrict`, `Marshal`, `MarshalJSONCAP`/`ParseJSON`, `Validate` and `Check` with `Options.LenientTime`, `Options.Profiles` and `Problem.Essential`; `Profile`, `NewProfile`, `RegisterProfile`, `ProfileByName`, `DetectProfiles`, `CAPCP`, `CAPCPWithLocations`, `IPAWS`, `India`, `RepairIndia`; `History`; `ValidateSchema` and `SchemaValidator`; references, date-times, `MostSevere`, `Expires`; `ParsePolygon`, `ParseCircle`, `CirclePolygon`, `Alert.GeoJSON`; `ParseFeed`, `ParseEDXLDE`, `WriteAtom`, `WriteEDXLDE` and `WriteEDXLDE2`; `CirclePolygonN`, `GeoJSONWith`; `Signer`, `Verifier` (`VerifyChain`, `Revoked`, `KeyUsages`), `CRLCheck`, `ParseCRLs`, `OCSPCheck` |
+| `capxsd` | `Validate`, `Validator`, `Schema`: the OASIS CAP-v1.2.xsd file on the pure-Go engine github.com/cB-Sigma/xsd |
+| `capnet` | `Poller`, `FeedHandler`, `Receiver`, `Pusher`, `NAADSStream`, `SplitStream` |
+| `interop` (nested module, tests only) | cross-checks against github.com/tannerryan/cap; with `SIGMA_CAP_INTEROP=1`, xmlsec1 and xmlschema in Docker |
 
 ## Testing
 
@@ -170,7 +181,9 @@ the SigmaM2M project's compliance report and have no meaning outside it.
 out of this one. It runs with `go test ./...` inside it:
 
 ```
-cd interop && go test ./...
+cd interop && go test ./...                         # tannerryan/cap
+cd interop && SIGMA_CAP_INTEROP=1 go test ./...     # also xmlsec1 and xmlschema in Docker
+SIGMA_CAP_LIVE=1 go test -run Live ./capnet         # the public NWS, Environment Canada, SACHET and NAADS sources
 ```
 
 ### Interop tested against
@@ -178,7 +191,7 @@ cd interop && go test ./...
 - github.com/tannerryan/cap v1.1.1 (`interop/`): our alerts parse and
   validate there without errors, its output parses and validates here, our
   RSA and ECDSA signatures verify there (self-signed, and chained through
-  an intermediate to a root), and its CAP-CP 1.0 check agrees with ours on
+  an intermediate to a root; ECDSA in the ASN.1 form it reads), and its CAP-CP 1.0 check agrees with ours on
   a complying and a failing alert.
 - NDMA's SACHET feed, by hand on 2026-10-11 (not an automated test): 50
   live alerts were read with `Parse`; all passed `ValidateSchema` and
@@ -190,10 +203,24 @@ cd interop && go test ./...
   tannerryan/cap v1.1.1 ships in its testing directory (17 CAP-CP 0.4
   alerts from Environment Canada and the NAADS aggregator, 12 IPAWS
   alerts from the US National Weather Service, 4 OASIS examples) parse,
-  pass `ValidateSchema` and have no errors under the profiles they
-  declare. The profiles warn on some (NWS alerts without EAS-ORG; a NAADS
+  pass `ValidateSchema` and the OASIS schema (`capxsd`) and have no
+  errors under the profiles they declare. The profiles warn on some (NWS alerts without EAS-ORG; a NAADS
   alert carrying MinorChange on an Alert; a Spanish wireless text of 91
-  characters). No live Canadian or US feed has been read.
+  characters).
+- xmlsec1 (Alpine 3.20, Docker): our RSA and ECDSA signatures verify
+  there and alerts it signs from a template verify here; a changed alert
+  fails both. This test found that ECDSA values were written in ASN.1
+  form, which XML Signature does not allow; fixed in v0.3.0.
+- xmlschema 3.4.3 (Docker): our EDXL-DE 2.0 envelopes (embedded, base64
+  and linked alerts) pass the OASIS EDXL-DE 2.0 CS02 schema set, and an
+  envelope missing a required element fails it.
+- Live sources, with `SIGMA_CAP_LIVE=1` (`capnet/live_test.go`). On
+  2026-10-12: 25 alerts of the US NWS active feed, 6 CAP files of
+  Environment Canada's datamart and 25 alerts of SACHET's RSS feed read
+  through `capnet.Poller` or the datamart listing all passed
+  `ValidateSchema`, the OASIS schema and their declared profiles (SACHET
+  after `RepairIndia`), and a NAADS heartbeat arrived on the TCP stream
+  in 34 seconds.
 
 ## Related repositories
 

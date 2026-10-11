@@ -4,6 +4,7 @@ go 1.27.1
 
 require (
 	github.com/beevik/etree v1.6.0
+	github.com/cB-Sigma/xsd v0.3.0
 	github.com/russellhaering/goxmldsig v1.6.0
 	golang.org/x/crypto v0.57.0
 )

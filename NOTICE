@@ -13,14 +13,15 @@ added for this module carry "Copyright 2026 Abhinav Gautam" and
 Specifications
 --------------
 
-No specification or schema text is reproduced, and no specification
-document or schema is redistributed. Element names, namespaces and
-enumeration values are interface facts every implementation must use.
+No specification text is reproduced in the code or documentation. Element
+names, namespaces and enumeration values are interface facts every
+implementation must use. The schema files listed under "Third-party
+files" are redistributed unmodified, with their own notices.
 
 - OASIS Common Alerting Protocol Version 1.2 (and the CAP 1.1 and 1.0
   namespaces, read as 1.2) and its XML schema, copyright OASIS Open. The
-  schema's content model is encoded as facts; the schema file is not
-  included.
+  schema's content model is encoded as facts in schema.go; the schema
+  file itself ships in capxsd (below).
 - OASIS EDXL Distribution Element 1.0 and 2.0, and the CAP v1.2 USA IPAWS
   Profile 1.0, copyright OASIS Open: names and rules used as facts.
 - The Canadian Profile of CAP (CAP-CP) rule sets and event and location
@@ -34,6 +35,24 @@ enumeration values are interface facts every implementation must use.
 The India profile describes conventions observed in the public SACHET
 feed of India's National Disaster Management Authority; it is not an
 official profile and no NDMA or C-DOT text is reproduced.
+
+Third-party files
+-----------------
+
+- capxsd/CAP-v1.2.xsd: the OASIS CAP 1.2 schema as OASIS publishes it
+  (https://docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2.xsd), byte for
+  byte (its SHA-256 is checked by a test), "Copyright OASIS Open 2010 All
+  Rights Reserved", copied under the OASIS copyright policy, which lets
+  OASIS documents be copied and furnished to others unmodified with their
+  notice.
+- interop/testdata/edxl-de-v2.0-cs02/ and
+  interop/testdata/DE_2.0_Example_Appendix_B2_9.xml: the EDXL-DE 2.0
+  Committee Specification 02 schemas and one example, unmodified,
+  "Copyright (c) OASIS Open 2013. All Rights Reserved", same policy; test
+  data of the test-only interop module.
+- interop/testdata/w3c/xml.xsd: the W3C schema for the XML namespace
+  (https://www.w3.org/2001/xml.xsd), unmodified, under the W3C Software
+  and Document License; test data.
 
 Trademarks
 ----------
@@ -55,12 +74,17 @@ Dependencies
 - github.com/jonboulle/clockwork (Apache-2.0), through goxmldsig.
 - golang.org/x/crypto (BSD-3-Clause, Copyright The Go Authors): OCSP
   requests and responses.
+- github.com/cB-Sigma/xsd (Apache-2.0, Copyright Abhinav Gautam): the XSD
+  engine of package capxsd.
 - The Go standard library (BSD-3-Clause, Copyright The Go Authors).
 
 The test-only module interop/ also uses github.com/tannerryan/cap
 (BSD-2-Clause, Copyright Tanner Ryan) to cross-check this one, and reads
 the sample alerts it ships from the Go module cache; it is not a
-dependency of this module.
+dependency of this module. With SIGMA_CAP_INTEROP=1 it also builds
+Docker images of xmlschema (MIT, https://github.com/sissaschool/xmlschema)
+and xmlsec1 (the XML Security Library, MIT, from Alpine packages) to check
+schemas and signatures; they are fetched at build time, not redistributed.
 
 Test data
 ---------

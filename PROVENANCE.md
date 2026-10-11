@@ -48,6 +48,25 @@ EAS-ORG originator codes) are facts copied as values, not prose.
 | IPAWS warnings from outside the profile (ipaws.go) | 47 CFR 11.31 (EAS-ORG originator codes); US National Weather Service CAP v1.2 documentation, 2017-03-07 (BLOCKCHANNEL values); FEMA IPAWS-OPEN workshop slides, 2018 (CMAMlongtext 360 characters, WEAHandling values) | US government works | facts only; checks are warnings and name their source |
 | India (india.go) | no published profile found (NDMA, C-DOT, TEC, TSDSI, TRAI searched 2026-10-11; ITU-T X.1303 is CAP 1.2); conventions observed in 50 alerts of the SACHET RSS feed (sachet.ndma.gov.in/cap_public_website/rss/rss_india.xml) read on 2026-10-11 | the alerts are public warnings; none is kept in this repository | facts only: language codes, the LGD geocode name, the "Polygon URL" parameter, points in altitude and ceiling; the TL to Telugu and PN to Punjabi mapping comes from the script of those blocks |
 
+## v0.3.0
+
+v0.3.0 (2026-10-12) added, written for this module: package `capxsd`
+(the OASIS schema file on github.com/cB-Sigma/xsd, the same author's XSD
+engine), package `capnet` (feed poller, feed server, push receiver and
+sender, NAADS stream client), `WriteEDXLDE2` and `EDXLContent`
+(edxl.go), `CirclePolygonN` and `GeoJSONWith` (geo.go), CAP 1.2 clause
+numbers on base problems (cap.go), and the ECDSA signature value form of
+XML Signature (ecdsa_xmldsig.go). Sources used for them:
+
+| Part | Source | Use |
+|---|---|---|
+| capxsd | OASIS CAP-v1.2.xsd (docs.oasis-open.org/emergency/cap/v1.2/CAP-v1.2.xsd, fetched 2026-10-12) | shipped unmodified, see NOTICE |
+| WriteEDXLDE2 | OASIS EDXL-DE 2.0 Committee Specification 02, its schema edxl-de-v2.0-wd11.xsd and supporting schemas (docs.oasis-open.org/emergency/edxl-de/v2.0/cs02/) | element names, order and required elements as facts; the schemas are interop test data |
+| ECDSA signature values | RFC 6931 2.3.6 and W3C XML Signature 1.1 (the r and s integers side by side) | the form written by default; found by the xmlsec1 test, which refused the ASN.1 form goxmldsig writes |
+| NAADS stream | the stream hosts and port Pelmorex gives NAAD System users (streaming1 and streaming2.naad-adna.pelmorex.com, 8080), and the stream itself as read on 2026-10-12 (documents back to back, heartbeats from "NAADS-Heartbeat" about once a minute) | facts |
+| Poller paging | RFC 5005 (feed paging, rel="next") | facts |
+| Live sources | api.weather.gov (US NWS), dd.weather.gc.ca (Environment Canada datamart), sachet.ndma.gov.in (India's SACHET RSS), the NAADS stream | read by the opt-in live tests; nothing kept |
+
 ## Other implementations
 
 github.com/tannerryan/cap (BSD-2-Clause) was not read for the v0.1
@@ -63,6 +82,9 @@ and no code was taken. Differences: this module also checks CAP-CP 0.4,
 the event list (as a warning) and location code form, and compares
 language variants block by block rather than as sets.
 
+For v0.3.0, xmlsec1 (Alpine 3.20 package) and xmlschema 3.4.3 run in
+Docker in the interop module as independent checkers of signatures and
+schemas; neither was read for code.
 ## Test data
 
 Every alert, sender, identifier, area, key, certificate and CRL in the
