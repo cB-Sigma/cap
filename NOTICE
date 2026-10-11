@@ -18,9 +18,22 @@ document or schema is redistributed. Element names, namespaces and
 enumeration values are interface facts every implementation must use.
 
 - OASIS Common Alerting Protocol Version 1.2 (and the CAP 1.1 and 1.0
-  namespaces, read as 1.2), copyright OASIS Open.
+  namespaces, read as 1.2) and its XML schema, copyright OASIS Open. The
+  schema's content model is encoded as facts; the schema file is not
+  included.
+- OASIS EDXL Distribution Element 1.0 and 2.0, and the CAP v1.2 USA IPAWS
+  Profile 1.0, copyright OASIS Open: names and rules used as facts.
+- The Canadian Profile of CAP (CAP-CP) rule sets and event and location
+  references, Public Safety Canada (Crown copyright): rules restated in
+  our own words; the event codes are listed as values.
+- US federal sources for IPAWS parameter values (47 CFR 11.31, National
+  Weather Service CAP documentation, FEMA IPAWS-OPEN material): facts.
 - W3C XML Signature Syntax and Processing, Atom (RFC 4287), RSS 2.0,
   GeoJSON (RFC 7946): used for facts only.
+
+The India profile describes conventions observed in the public SACHET
+feed of India's National Disaster Management Authority; it is not an
+official profile and no NDMA or C-DOT text is reproduced.
 
 Trademarks
 ----------
@@ -40,11 +53,14 @@ Dependencies
 - github.com/russellhaering/goxmldsig (Apache-2.0, Copyright Russell
   Haering and contributors): enveloped XML signatures.
 - github.com/jonboulle/clockwork (Apache-2.0), through goxmldsig.
+- golang.org/x/crypto (BSD-3-Clause, Copyright The Go Authors): OCSP
+  requests and responses.
 - The Go standard library (BSD-3-Clause, Copyright The Go Authors).
 
 The test-only module interop/ also uses github.com/tannerryan/cap
-(BSD-2-Clause, Copyright Tanner Ryan) to cross-check this one; it is not
-a dependency of this module.
+(BSD-2-Clause, Copyright Tanner Ryan) to cross-check this one, and reads
+the sample alerts it ships from the Go module cache; it is not a
+dependency of this module.
 
 Test data
 ---------

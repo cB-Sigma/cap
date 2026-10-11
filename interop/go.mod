@@ -15,4 +15,5 @@ require (
 	github.com/beevik/etree v1.8.1 // indirect
 	github.com/jonboulle/clockwork v0.5.0 // indirect
 	github.com/russellhaering/goxmldsig v1.6.1 // indirect
+	golang.org/x/crypto v0.57.0 // indirect
 )

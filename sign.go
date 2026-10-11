@@ -42,6 +42,18 @@ type VerifySettings struct {
 	// signature is valid only when its KeyInfo certificate is one of them
 	// (and within its validity period).
 	Trusted []string `json:"trusted"`
+	// Roots are PEM CA certificates. A signature whose KeyInfo certificate
+	// is not pinned in Trusted is accepted when that certificate chains to
+	// one of them (and to nothing else), through intermediates carried in
+	// KeyInfo or listed in Intermediates, with every certificate within
+	// its validity period.
+	Roots []string `json:"roots,omitempty"`
+	// Intermediates are PEM CA certificates used to build chains to Roots
+	// for signers that leave them out of KeyInfo. They are not trusted on
+	// their own.
+	Intermediates []string `json:"intermediates,omitempty"`
+	// SystemRoots adds the operating system's trusted CAs to Roots.
+	SystemRoots bool `json:"systemRoots,omitempty"`
 	// Require refuses alerts without a valid signature. Without it an
 	// unsigned alert is accepted and marked "signature": "none"; a
 	// signature that does not verify is refused unless acceptInvalid.
@@ -115,10 +127,25 @@ func (s *Signer) Certificates() []*x509.Certificate { return s.certs }
 // Verifier checks CAP signatures against trusted certificates.
 type Verifier struct {
 	certs   []*x509.Certificate
+	roots   *x509.CertPool
+	inters  []*x509.Certificate
 	require bool
 	// Now is the clock for certificate validity (tests); nil is time.Now.
 	Now func() time.Time
+	// Revoked, when set, is asked about every chain a signature is
+	// accepted on (the signing certificate first, then its issuers; a
+	// pinned certificate is a chain of one). An error refuses the
+	// signature. CRLCheck builds one from certificate revocation lists;
+	// an OCSP or other check can be plugged in the same way.
+	Revoked func(chain []*x509.Certificate) error
+	// KeyUsages are the extended key usages a chained signing certificate
+	// must allow; empty accepts any. Pinned certificates are not checked.
+	KeyUsages []x509.ExtKeyUsage
 }
+
+// Roots is the pool of CA certificates chains are built to; nil when the
+// verifier has none and accepts only pinned certificates.
+func (v *Verifier) Roots() *x509.CertPool { return v.roots }
 
 // Trusted is the certificates whose signatures are accepted.
 func (v *Verifier) Trusted() []*x509.Certificate { return v.certs }
@@ -137,27 +164,51 @@ func NewVerifier(s VerifySettings) (*Verifier, error) {
 	if first != nil {
 		return nil, first
 	}
-	if len(v.certs) == 0 {
-		return nil, errors.New("no trusted certificate is given")
+	if len(v.certs) == 0 && v.roots == nil {
+		return nil, errors.New("no trusted certificate or root is given")
 	}
 	return v, nil
 }
 
-// NewVerifierSkipping reads the trusted certificates, passing each entry
-// that cannot be used to skip and leaving it out. With none left, every
-// signed alert fails verification (it stays refused).
+// NewVerifierSkipping reads the trusted certificates, roots and
+// intermediates, passing each entry that cannot be used to skip (i is its
+// index in its own list, which the error names) and leaving it out. With
+// none left, every signed alert fails verification (it stays refused).
 func NewVerifierSkipping(s VerifySettings, skip func(i int, err error)) *Verifier {
 	v := &Verifier{require: s.Require}
-	for i, p := range s.Trusted {
-		cs, err := parseCerts(p)
-		if err == nil && len(cs) == 0 {
-			err = errors.New("no PEM CERTIFICATE block")
+	read := func(list []string, what string) []*x509.Certificate {
+		var out []*x509.Certificate
+		for i, p := range list {
+			cs, err := parseCerts(p)
+			if err == nil && len(cs) == 0 {
+				err = errors.New("no PEM CERTIFICATE block")
+			}
+			if err != nil {
+				skip(i, fmt.Errorf("%s %d: %w", what, i, err))
+				continue
+			}
+			out = append(out, cs...)
 		}
+		return out
+	}
+	v.certs = read(s.Trusted, "trusted certificate")
+	roots := read(s.Roots, "root certificate")
+	v.inters = read(s.Intermediates, "intermediate certificate")
+	if s.SystemRoots {
+		sys, err := x509.SystemCertPool()
 		if err != nil {
-			skip(i, fmt.Errorf("trusted certificate %d: %w", i, err))
-			continue
+			skip(0, fmt.Errorf("system roots: %w", err))
+		} else {
+			v.roots = sys
 		}
-		v.certs = append(v.certs, cs...)
+	}
+	if len(roots) > 0 {
+		if v.roots == nil {
+			v.roots = x509.NewCertPool()
+		}
+		for _, c := range roots {
+			v.roots.AddCert(c)
+		}
 	}
 	return v
 }
@@ -177,37 +228,66 @@ var ErrUnsigned = errors.New("the alert is not signed and signatures are require
 // cannot be slipped in. An unsigned document is returned as it is with
 // state "none" unless signatures are required.
 func (v *Verifier) Verify(doc []byte) (verified []byte, state string, err error) {
+	verified, state, _, err = v.VerifyChain(doc)
+	return verified, state, err
+}
+
+// VerifyChain is Verify that also returns the chain the signature was
+// accepted on: the signing certificate first, then its issuers up to a
+// root (only the signing certificate when it is pinned). The chain is nil
+// for an unsigned alert.
+func (v *Verifier) VerifyChain(doc []byte) (verified []byte, state string, chain []*x509.Certificate, err error) {
 	d := etree.NewDocument()
 	if err := d.ReadFromBytes(doc); err != nil {
-		return nil, "", fmt.Errorf("the CAP document is not well-formed XML: %w", err)
+		return nil, "", nil, fmt.Errorf("the CAP document is not well-formed XML: %w", err)
 	}
 	root := d.Root()
 	if _, isCAP := Version(rootSpace(root)); root == nil || root.Tag != "alert" || !isCAP {
-		return nil, "", fmt.Errorf("not a CAP alert (root element must be alert in a CAP namespace such as %s)", Namespace)
+		return nil, "", nil, fmt.Errorf("not a CAP alert (root element must be alert in a CAP namespace such as %s)", Namespace)
 	}
 	if !hasSignature(root) {
 		if v.require {
-			return nil, "", ErrUnsigned
+			return nil, "", nil, ErrUnsigned
 		}
-		return doc, SignatureNone, nil
+		return doc, SignatureNone, nil, nil
 	}
 	now := time.Now
 	if v.Now != nil {
 		now = v.Now
 	}
-	vc := dsig.NewDefaultValidationContext(&dsig.MemoryX509CertificateStore{Roots: v.certs})
-	vc.Clock = dsig.NewFakeClockAt(now())
+	at := now()
+	store := v.certs
+	keyInfo, err := keyInfoCerts(root)
+	if err != nil {
+		return nil, "", nil, fmt.Errorf("the alert's signature does not verify: %w", err)
+	}
+	if len(keyInfo) > 0 {
+		chain, err = v.trustChain(keyInfo, at)
+		if err != nil {
+			return nil, "", nil, fmt.Errorf("the alert's signature does not verify: %w", err)
+		}
+		store = chain[:1]
+	}
+	vc := dsig.NewDefaultValidationContext(&dsig.MemoryX509CertificateStore{Roots: store})
+	vc.Clock = dsig.NewFakeClockAt(at)
 	el, err := vc.Validate(root)
 	if err != nil {
-		return nil, "", fmt.Errorf("the alert's signature does not verify: %w", err)
+		return nil, "", nil, fmt.Errorf("the alert's signature does not verify: %w", err)
+	}
+	if chain == nil && len(store) == 1 {
+		// No KeyInfo: goxmldsig used the only pinned certificate.
+		chain = store[:1]
+		if err := v.revoked(chain); err != nil {
+			return nil, "", nil, fmt.Errorf("the alert's signature does not verify: %w", err)
+		}
 	}
 	out := etree.NewDocument()
 	out.SetRoot(el)
 	b, err := out.WriteToBytes()
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
-	return append([]byte(xmlHeader), b...), SignatureValid, nil
+	return append([]byte(xmlHeader), b...), SignatureValid, chain, nil
 }
 
 const xmlHeader = `<?xml version="1.0" encoding="UTF-8"?>` + "\n"

@@ -66,8 +66,15 @@ func ParseFeed(b []byte) ([]Entry, error) {
 				}
 				return []Entry{{ID: a.Identifier, Updated: a.Sent, Alert: a, Raw: b}}, nil
 			}
+			if _, isEDXL := edxlVersion(se.Name.Space); isEDXLRoot(root) && isEDXL {
+				dist, err := ParseEDXLDE(b)
+				if err != nil {
+					return nil, err
+				}
+				return dist.Entries, nil
+			}
 			if root != "feed" && root != "rss" && root != "RDF" {
-				return nil, fmt.Errorf("the document is neither an Atom or RSS feed nor a CAP alert (root element %q)", root)
+				return nil, fmt.Errorf("the document is neither an Atom or RSS feed, an EDXL-DE envelope nor a CAP alert (root element %q)", root)
 			}
 			continue
 		}

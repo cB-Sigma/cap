@@ -6,9 +6,16 @@
 // CAP 1.2, and Validate lists every problem rather than stopping at the
 // first, so an application can store an alert that strays from the schema
 // with its problems noted (Problem.Essential tells which problems leave an
-// alert unusable). Signatures are enveloped XML signatures over the whole
-// alert, verified against certificates the application pins (sign.go).
-// Areas convert to GeoJSON (geo.go).
+// alert unusable). Profiles add a community's rules to validation
+// (Options.Profiles): the Canadian profile CAP-CP (CAPCP), the US IPAWS
+// profile (IPAWS), the conventions of India's SACHET feed (India), or the
+// application's own (Profile, NewProfile); Check lists warnings too.
+// ValidateSchema checks a document's structure against the CAP 1.2
+// schema's content model (schema.go). Signatures are enveloped XML
+// signatures over the whole alert, verified against pinned certificates or
+// chains to trusted roots, with a revocation hook (sign.go, chain.go).
+// Areas convert to GeoJSON (geo.go). ParseEDXLDE reads alerts in EDXL-DE
+// envelopes (edxl.go).
 //
 // The message model follows the CAP 1.2 schema; no schema or
 // specification text is copied here.
@@ -16,9 +23,11 @@ package cap
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/xml"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -286,9 +295,31 @@ func strictTime(s string) bool {
 type Problem struct {
 	Field string `json:"field"`
 	Issue string `json:"issue"`
+	// Profile names the profile whose rule this is ("" for CAP 1.2
+	// itself).
+	Profile string `json:"profile,omitempty"`
+	// Rule is the rule's reference in the profile or standard, such as a
+	// clause or rule number, where one is known ("XSD" for the schema
+	// check).
+	Rule string `json:"rule,omitempty"`
+	// Warning marks a recommendation rather than a requirement: Check
+	// lists it, Validate does not fail on it.
+	Warning bool `json:"warning,omitempty"`
 }
 
-func (p Problem) String() string { return p.Field + ": " + p.Issue }
+func (p Problem) String() string {
+	s := p.Field + ": " + p.Issue
+	switch {
+	case p.Profile != "" && p.Rule != "":
+		s += " (" + p.Profile + " " + p.Rule + ")"
+	case p.Profile != "":
+		s += " (" + p.Profile + ")"
+	}
+	if p.Warning {
+		s = "warning: " + s
+	}
+	return s
+}
 
 // ValidationError lists every problem of an alert.
 type ValidationError []Problem
@@ -301,16 +332,25 @@ func (v ValidationError) Error() string {
 	return "the CAP alert is not valid: " + strings.Join(s, "; ")
 }
 
-// Options relax validation for feeds that stray from the schema.
+// Options relax validation for feeds that stray from the schema, and add
+// profiles.
 type Options struct {
 	// LenientTime accepts "Z" and fractional seconds in date-times.
 	LenientTime bool
+	// Profiles are checked after CAP 1.2 itself (CAPCP, IPAWS, India, or
+	// one of the application's own); their problems carry the profile's
+	// name.
+	Profiles []Profile
 }
 
 // Essential tells whether a validation problem leaves the alert unusable:
 // without its identifier, sender or a readable sent time it cannot be
-// told apart from others or referenced.
+// told apart from others or referenced. Profile problems are never
+// essential.
 func (p Problem) Essential() bool {
+	if p.Profile != "" || p.Warning {
+		return false
+	}
 	switch p.Field {
 	case "identifier", "sender":
 		return p.Issue == "is required"
@@ -332,10 +372,50 @@ func (v ValidationError) Essential() bool {
 
 // Validate checks the alert against the CAP 1.2 rules: required elements,
 // enumerations, date-time form, references, identifier characters, the
-// restriction and addresses conditions of the scope, and area geometry.
+// restriction and addresses conditions of the scope, and area geometry;
+// then against each of o.Profiles. It returns the problems that are not
+// warnings as a ValidationError, or nil.
 func (a *Alert) Validate(o Options) error {
 	var ps ValidationError
-	add := func(f, format string, args ...any) { ps = append(ps, Problem{f, fmt.Sprintf(format, args...)}) }
+	for _, p := range a.Check(o) {
+		if !p.Warning {
+			ps = append(ps, p)
+		}
+	}
+	if len(ps) > 0 {
+		return ps
+	}
+	return nil
+}
+
+// Check is Validate that returns every problem, warnings included (nil
+// when there is none).
+func (a *Alert) Check(o Options) []Problem {
+	ps := a.check(o)
+	for _, pr := range o.Profiles {
+		if pr == nil {
+			continue
+		}
+		for _, p := range pr.Check(a) {
+			if p.Profile == "" {
+				p.Profile = pr.Name()
+			}
+			ps = append(ps, p)
+		}
+	}
+	return ps
+}
+
+var sha1HexRE = regexp.MustCompile(`^[0-9a-fA-F]{40}$`)
+
+func (a *Alert) check(o Options) []Problem {
+	var ps []Problem
+	add := func(f, format string, args ...any) {
+		ps = append(ps, Problem{Field: f, Issue: fmt.Sprintf(format, args...)})
+	}
+	warn := func(f, format string, args ...any) {
+		ps = append(ps, Problem{Field: f, Issue: fmt.Sprintf(format, args...), Warning: true})
+	}
 	idChars := func(f, v string) {
 		if v == "" {
 			add(f, "is required")
@@ -412,8 +492,25 @@ func (a *Alert) Validate(o Options) error {
 		checkTime(p+"onset", in.Onset, false)
 		checkTime(p+"expires", in.Expires, false)
 		for j, r := range in.Resource {
+			rp := fmt.Sprintf("%sresource[%d]", p, j)
 			if r.ResourceDesc == "" || r.MimeType == "" {
-				add(fmt.Sprintf("%sresource[%d]", p, j), "needs resourceDesc and mimeType")
+				add(rp, "needs resourceDesc and mimeType")
+			}
+			// Recommendations, as warnings so that alerts accepted before
+			// stay accepted: derefUri carries base64 data, digest is a
+			// SHA-1 hash in hexadecimal, size is a whole number of bytes.
+			if r.DerefURI != "" {
+				if _, err := base64.StdEncoding.DecodeString(strings.Join(strings.Fields(r.DerefURI), "")); err != nil {
+					warn(rp+".derefUri", "is not base64 data")
+				}
+			}
+			if d := strings.TrimSpace(r.Digest); d != "" && !sha1HexRE.MatchString(d) {
+				warn(rp+".digest", "%q is not a SHA-1 hash in hexadecimal", d)
+			}
+			if s := strings.TrimSpace(r.Size); s != "" {
+				if _, err := strconv.ParseUint(s, 10, 64); err != nil {
+					warn(rp+".size", "%q is not a number of bytes", s)
+				}
 			}
 		}
 		for j, ar := range in.Area {
@@ -433,6 +530,11 @@ func (a *Alert) Validate(o Options) error {
 			}
 			if ar.Ceiling != "" && ar.Altitude == "" {
 				add(ap+"ceiling", "needs altitude")
+			}
+			if alt, err1 := strconv.ParseFloat(ar.Altitude, 64); err1 == nil {
+				if ceil, err2 := strconv.ParseFloat(ar.Ceiling, 64); err2 == nil && ceil < alt {
+					warn(ap+"ceiling", "is below altitude")
+				}
 			}
 			for _, f := range []struct{ n, v string }{{"altitude", ar.Altitude}, {"ceiling", ar.Ceiling}} {
 				if f.v != "" {
