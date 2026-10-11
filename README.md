@@ -23,6 +23,34 @@ feed ingest, publishing and public warning integrations.
 | GeoJSON (RFC 7946) | areas as a FeatureCollection; circles as 32-segment polygons |
 | CAP-CP and other national profiles | no |
 
+## Choosing a Go CAP library
+
+Compared from each library's source at the versions named, in October
+2026. Check the projects themselves before relying on a row.
+
+| | this module | tannerryan/cap v1.1.1 | IBM/cap (2019 commit) | alerting/go-cap (2018 commit) |
+|---|---|---|---|---|
+| Maintained | yes | yes (tagged 2026-10-03) | archived | archived |
+| Licence | Apache-2.0 | BSD-2-Clause | Apache-2.0 | MIT |
+| Reads CAP 1.2 | yes | yes | yes | yes, without namespace checks |
+| Reads CAP 1.1 and 1.0 | yes, as 1.2 | no, refuses other namespaces | 1.1 as a separate type | yes, without namespace checks |
+| Validation | every problem listed, each marked essential or not; strict or lenient date-times | errors and warnings, each with its clause | no | no |
+| Canadian profile (CAP-CP) | no | yes | no | no |
+| Verifies XML signatures | yes, against pinned certificates | yes, building a chain to trusted roots | no | no |
+| Signs alerts | yes (RSA, ECDSA) | no | no | no |
+| Atom and RSS feeds | reads Atom and RSS, writes Atom | no | reads the US NWS Atom feed | no |
+| Areas as GeoJSON | yes | polygon and circle parsing only | no | polygon and circle types |
+
+Both maintained libraries sign or verify through
+github.com/russellhaering/goxmldsig and github.com/beevik/etree. Our
+interop tests cross-check the two (see Testing).
+
+Pick this module when you publish alerts as well as read them, take
+alerts from older CAP 1.1 or 1.0 sources, or need the feeds and GeoJSON
+areas. Pick tannerryan/cap when you receive Canadian alerts and need
+CAP-CP validation, or want signature certificates checked against a CA
+chain rather than pinned.
+
 ## Install
 
 ```
