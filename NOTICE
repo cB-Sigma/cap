@@ -1,0 +1,53 @@
+cap (OASIS Common Alerting Protocol 1.2 in Go)
+Copyright 2026 Abhinav Gautam
+
+This module is licensed under the Apache License, Version 2.0 (LICENSE).
+
+The code was written for SigmaM2M from the documents listed in
+PROVENANCE.md. It contains no code from other projects. The source files
+that come from SigmaM2M carry no per-file copyright header (the convention
+of the code they come from); the copyright line above covers them. Files
+added for this module carry "Copyright 2026 Abhinav Gautam" and
+"SPDX-License-Identifier: Apache-2.0".
+
+Specifications
+--------------
+
+No specification or schema text is reproduced, and no specification
+document or schema is redistributed. Element names, namespaces and
+enumeration values are interface facts every implementation must use.
+
+- OASIS Common Alerting Protocol Version 1.2 (and the CAP 1.1 and 1.0
+  namespaces, read as 1.2), copyright OASIS Open.
+- W3C XML Signature Syntax and Processing, Atom (RFC 4287), RSS 2.0,
+  GeoJSON (RFC 7946): used for facts only.
+
+Trademarks
+----------
+
+OASIS is a trademark of OASIS Open. "Common Alerting Protocol" and "CAP"
+are used here only to name the standard this module implements. This
+module is an independent implementation; it is not affiliated with,
+sponsored by or endorsed by OASIS Open or its Emergency Management
+Technical Committee. Other names are trademarks of their owners and are
+used descriptively.
+
+Dependencies
+------------
+
+- github.com/beevik/etree (BSD-2-Clause, Copyright Brett Vickers):
+  XML element trees for signing and verification.
+- github.com/russellhaering/goxmldsig (Apache-2.0, Copyright Russell
+  Haering and contributors): enveloped XML signatures.
+- github.com/jonboulle/clockwork (Apache-2.0), through goxmldsig.
+- The Go standard library (BSD-3-Clause, Copyright The Go Authors).
+
+The test-only module interop/ also uses github.com/tannerryan/cap
+(BSD-2-Clause, Copyright Tanner Ryan) to cross-check this one; it is not
+a dependency of this module.
+
+Test data
+---------
+
+Every alert, sender, identifier, area, key and certificate in the tests
+and the examples is made up or generated at run time.
